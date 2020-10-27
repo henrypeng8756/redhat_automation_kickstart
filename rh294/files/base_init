@@ -1,0 +1,200 @@
+#!/bin/bash
+
+cd /root
+
+while true
+do
+	wget http://henrythebest/rh294/files/cdrom.cfg
+	if [ $? -eq 0 ]
+	then
+		break;
+	fi
+	sleep 5
+done
+
+echo > /dev/tty1
+
+echo "Building VM Base image ......" > /dev/tty1
+
+virt-install \
+--name=Base \
+--os-type=linux \
+--os-variant=rhel8.1 \
+--vcpus sockets=2,cores=2,threads=2 \
+--ram=2048 \
+--disk path=/var/lib/libvirt/images/base-vda.qcow2,format=qcow2,size=10,bus=virtio \
+--disk path=/var/lib/libvirt/images/base-vdb.qcow2,format=qcow2,size=10,bus=virtio \
+--location=/var/www/html/rhel-8.2-x86_64-dvd.iso \
+--network model=virtio,network=default,mac=52:54:00:00:00:10 \
+--initrd-inject=/root/cdrom.cfg \
+--extra-args="ks=file:/cdrom.cfg" \
+--noautoconsole
+
+virsh undefine Base
+
+rm -rf /root/cdrom.cfg
+
+echo > /dev/tty1
+echo > /dev/tty1
+echo > /dev/tty1
+
+while true
+do
+        virsh list | grep 'Base' >/dev/null 2>&1
+
+        if [ $? -ne 0 ]
+        then
+                break;
+        fi
+
+        printf "%s\r" 'Building Virtual Machine   \\\\\\\\\\     ' > /dev/tty1
+        sleep 0.1
+
+        printf "%s\r" 'Building Virtual Machine   ||||||||||     ' > /dev/tty1
+        sleep 0.1
+
+        printf "%s\r" 'Building Virtual Machine   //////////     ' > /dev/tty1
+        sleep 0.1
+
+        printf "%s\r" 'Building Virtual Machine   ----------     ' > /dev/tty1
+        sleep 0.1
+
+done
+
+echo > /dev/tty1
+
+echo "Makeing VM snapshot ....." > /dev/tty1
+
+cd /var/lib/libvirt/images
+
+qemu-img create -f qcow2 -b base-vda.qcow2 servera-vda.qcow2
+qemu-img create -f qcow2 -b base-vda.qcow2 serverb-vda.qcow2
+qemu-img create -f qcow2 -b base-vda.qcow2 serverc-vda.qcow2
+qemu-img create -f qcow2 -b base-vda.qcow2 serverd-vda.qcow2
+qemu-img create -f qcow2 -b base-vdb.qcow2 servera-vdb.qcow2
+qemu-img create -f qcow2 -b base-vdb.qcow2 serverb-vdb.qcow2
+qemu-img create -f qcow2 -b base-vdb.qcow2 serverc-vdb.qcow2
+qemu-img create -f qcow2 -b base-vdb.qcow2 serverd-vdb.qcow2
+
+
+MAC=11
+
+for I in servera serverb serverc serverd
+do
+	echo > /dev/tty1
+	echo "Creating ${I}"
+
+        virt-install \
+        --name=${I} \
+        --import \
+        --os-type=linux \
+        --os-variant=rhel8.1 \
+        --vcpus sockets=2,cores=2,threads=2 \
+        --ram=2048 \
+        --disk path=/var/lib/libvirt/images/${I}-vda.qcow2,format=qcow2,size=10,bus=virtio \
+        --disk path=/var/lib/libvirt/images/${I}-vdb.qcow2,format=qcow2,size=10,bus=virtio \
+        --network model=virtio,network=default,mac=52:54:00:00:00:${MAC} \
+        --noautoconsole
+
+	MAC=$((MAC+1))
+
+done
+
+
+cat > /etc/rc.d/rc.local << EOF
+#!/bin/bash
+# THIS FILE IS ADDED FOR COMPATIBILITY PURPOSES
+#
+# It is highly advisable to create own systemd services or udev rules
+# to run scripts during boot instead of using this file.
+#
+# In contrast to previous versions due to parallel execution during boot
+# this script will NOT be run after all other services.
+#
+# Please note that you must run 'chmod +x /etc/rc.d/rc.local' to ensure
+# that this script will be executed during boot.
+
+touch /var/lock/subsys/local
+
+EOF
+
+#=======================================================================
+# watting for vm initial finish
+
+count=0
+
+while true
+do
+        for HOST in servera serverb serverc serverd
+        do
+                grep $HOST /tmp/flag > /dev/null 2>&1
+
+                if [ $? -eq 0 ]
+                then
+                        count=$(( count + 1 ))
+                fi
+        done
+
+        if [ $count -eq 4 ]
+        then
+                break
+        else
+                count=0
+        fi
+	sleep 1
+done
+#=======================================================================
+while true
+do
+	for I in servera serverb serverc serverd
+	do
+		virsh list | grep ${I} > /dev/null 2>&1
+
+		if [ $? -eq 0 ]
+		then
+			virsh shutdown ${I}
+		fi
+	done
+
+	sleep 10
+
+	virsh list | grep 'server' > /dev/null 2>&1
+
+	if [ $? -eq 1 ]
+	then
+		break
+	fi	
+done
+#=======================================================================
+cd /var/lib/libvirt/images
+
+cmd="qemu-img create -f qcow2 -b "
+
+for I in servera serverb serverc serverd
+do
+	mv ${I}-vda.qcow2 ${I}-vda_org.qcow2
+	mv ${I}-vdb.qcow2 ${I}-vdb_org.qcow2
+done
+
+for I in servera serverb serverc serverd
+do
+	${cmd} ${I}-vda_org.qcow2 ${I}-vda.qcow2
+	${cmd} ${I}-vdb_org.qcow2 ${I}-vdb.qcow2
+done
+#=======================================================================
+virsh start servera
+virsh start serverb
+virsh start serverc
+virsh start serverd
+
+echo "redhat" | passwd --stdin root
+echo "redhat" | passwd --stdin student
+
+rm -rf /tmp/base_init
+rm -rf /root/an*
+rm -rf /root/or*
+rm -rf /tmp/ks*
+
+systemctl set-default graphical.target
+systemctl isolate graphical.target
+

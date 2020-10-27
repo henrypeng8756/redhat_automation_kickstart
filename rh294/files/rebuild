@@ -1,0 +1,23 @@
+#!/bin/bash
+
+CREATE() {
+		sudo virsh destroy $1
+		sudo rm -rf ${image}/${1}-vda.qcow2
+		sudo rm -rf ${image}/${1}-vdb.qcow2
+		${cmd} -b ${image}/${1}-vda_org.qcow2 ${image}/${1}-vda.qcow2 > /dev/null 2>&1
+		${cmd} -b ${image}/${1}-vdb_org.qcow2 ${image}/${1}-vdb.qcow2 > /dev/null 2>&1
+		sudo virsh start $1
+}
+
+image=/var/lib/libvirt/images
+cmd="sudo qemu-img create -f qcow2"
+
+case $1 in
+	servera)	CREATE $1;;
+	serverb)	CREATE $1;;
+	serverc)	CREATE $1;;
+	serverd)	CREATE $1;;
+	*)
+		echo "rebuild < VM-Name > "
+		;;
+esac

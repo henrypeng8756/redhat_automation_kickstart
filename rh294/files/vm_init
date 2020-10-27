@@ -1,0 +1,68 @@
+#!/bin/bash
+
+FLAG=$( ifconfig | grep ether | awk '{print $2}' | cut -d: -f6 )
+
+
+case $FLAG in
+	11)
+		nmcli connection modify enp1s0 ipv4.addresses 192.168.122.11/24 ipv4.gateway 192.168.122.1 \
+					       ipv4.dns 192.168.122.1 ipv4.method manual
+		echo "servera.lab.example.com" > /etc/hostname
+		HOSTNAME=servera
+		;;
+	12)
+		nmcli connection modify enp1s0 ipv4.addresses 192.168.122.12/24 ipv4.gateway 192.168.122.1 \
+						ipv4.dns 192.168.122.1 ipv4.method manual
+		echo "serverb.lab.example.com" > /etc/hostname
+		HOSTNAME=serverb
+		;;
+	13)
+		nmcli connection modify enp1s0 ipv4.addresses 192.168.122.13/24 ipv4.gateway 192.168.122.1 \
+						ipv4.dns 192.168.122.1 ipv4.method manual
+		echo "serverc.lab.example.com" > /etc/hostname
+		HOSTNAME=serverc
+		;;
+	14)
+		nmcli connection modify enp1s0 ipv4.addresses 192.168.122.14/24 ipv4.gateway 192.168.122.1 \
+						ipv4.dns 192.168.122.1  ipv4.method manual
+		echo "serverd.lab.example.com" > /etc/hostname
+		HOSTNAME=serverd
+		;;
+esac
+
+nmcli connection down enp1s0
+
+nmcli connection up enp1s0
+
+echo "student        ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/student
+
+#======================================================================================
+
+cat > /etc/rc.d/rc.local << EOF
+#!/bin/bash
+# THIS FILE IS ADDED FOR COMPATIBILITY PURPOSES
+#
+# It is highly advisable to create own systemd services or udev rules
+# to run scripts during boot instead of using this file.
+#
+# In contrast to previous versions due to parallel execution during boot
+# this script will NOT be run after all other services.
+#
+# Please note that you must run 'chmod +x /etc/rc.d/rc.local' to ensure
+# that this script will be executed during boot.
+
+touch /var/lock/subsys/local
+
+EOF
+
+rm -rf /tmp/vm_init
+
+rm -rf /root/an*
+
+rm -rf /root/or*
+
+rm -rf /tmp/ks*
+
+ssh -o StrictHostKeyChecking=no root@192.168.122.1 "echo ${HOSTNAME} >> /tmp/flag"
+
+init 6

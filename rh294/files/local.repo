@@ -1,0 +1,13 @@
+[BaseOS]
+name=RedHat-$releasever - Base
+baseurl=file:///var/www/html/pub/BaseOS
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+[AppStream]
+name=RedHat-$releasever - AppStream
+baseurl=file:///var/www/html/pub/AppStream
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release

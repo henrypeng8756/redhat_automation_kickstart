@@ -1,0 +1,39 @@
+#!/bin/bash
+
+VM_CTL() {
+	case $1 in
+		list)		sudo virsh list --all;;
+		start)		sudo virsh start $2;;
+		shutdown)	sudo virsh shutdown $2;;
+		reset)		sudo virsh reset $2;;
+		poweroff)	sudo virsh destroy $2;;
+	esac
+}
+
+
+image=/var/lib/libvirt/images/
+cmd="sudo qemu-img create -f qcow2"
+
+case $1 in
+	list)		;;
+	start)		;;
+	shutdown)	;;
+	reset)		;;
+	poweroff)	;;
+	*)
+		echo "vmctl   < list | start | shutdown | reset | poweroff >    < VM-Name >"
+		exit;
+		;;
+esac
+
+
+case $2 in
+	"")		VM_CTL $1 ;;
+	servera)	VM_CTL $1 $2;;
+	serverb)	VM_CTL $1 $2;;
+	serverc)	VM_CTL $1 $2;;
+	serverd)	VM_CTL $1 $2;;
+	*)
+		echo "vmctl   < list | start | shutdown | reset | poweroff >    < VM-Name > "
+		;;
+esac

@@ -4,7 +4,7 @@ cd /root
 
 while true
 do
-	wget http://henrythebest/rh294/files/cdrom.cfg
+	wget http://henrythebest.example.com/rh294/files/cdrom.cfg
 	if [ $? -eq 0 ]
 	then
 		break;
